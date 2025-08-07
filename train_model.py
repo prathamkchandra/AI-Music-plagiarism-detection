@@ -1,83 +1,61 @@
+# train_model.py
 import os
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+import numpy as np
+from keras.models import Model
+from keras.layers import Input, Conv2D, MaxPooling2D, Flatten, Dense
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+from keras.optimizers import Adam
 
-# Paths
-DATA_DIR = './model/Spectrograms/'
-MODEL_PATH = './model/cnn_similarity_model.keras'
+# Set paths
+data_dir = './model/Spectrograms'
+model_path = 'models/latest_model.keras'
 
-# Hyperparameters
-IMAGE_SIZE = (128, 128)
-BATCH_SIZE = 16
-EPOCHS = 15
+# Filter only valid class folders (directories only)
+class_folders = [d for d in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, d))]
+num_classes = len(class_folders)
 
-# Data generators with augmentation
-train_datagen = ImageDataGenerator(
-    rescale=1./255,
-    rotation_range=15,
-    zoom_range=0.1,
-    width_shift_range=0.1,
-    height_shift_range=0.1,
-    shear_range=0.1,
-    horizontal_flip=True,
-    validation_split=0.2
-)
+# Params
+input_shape = (128, 128, 3)
+batch_size = 32
+epochs = 15
 
-train_data = train_datagen.flow_from_directory(
-    DATA_DIR,
-    target_size=IMAGE_SIZE,
-    batch_size=BATCH_SIZE,
+# Image generators
+datagen = ImageDataGenerator(rescale=1./255, validation_split=0.2)
+train_data = datagen.flow_from_directory(
+    data_dir,
+    target_size=input_shape[:2],
+    batch_size=batch_size,
     class_mode='categorical',
-    subset='training',
-    shuffle=True
+    subset='training'
 )
-
-val_data = train_datagen.flow_from_directory(
-    DATA_DIR,
-    target_size=IMAGE_SIZE,
-    batch_size=BATCH_SIZE,
+val_data = datagen.flow_from_directory(
+    data_dir,
+    target_size=input_shape[:2],
+    batch_size=batch_size,
     class_mode='categorical',
-    subset='validation',
-    shuffle=True
+    subset='validation'
 )
 
-# Model
-model = Sequential([
-    Conv2D(32, (3, 3), activation='relu', input_shape=(*IMAGE_SIZE, 3)),
-    MaxPooling2D((2, 2)),
-    Conv2D(64, (3, 3), activation='relu'),
-    MaxPooling2D((2, 2)),
-    Conv2D(128, (3, 3), activation='relu'),
-    MaxPooling2D((2, 2)),
-    Flatten(),
-    Dropout(0.3),
-    Dense(128, activation='relu'),
-    Dense(train_data.num_classes, activation='softmax')
-])
+# 🔍 Debugging: Show detected classes
+print("Detected Classes:", train_data.class_indices)
 
-model.compile(
-    optimizer='adam',
-    loss='categorical_crossentropy',
-    metrics=['accuracy']
-)
+# Model definition using Functional API
+input_tensor = Input(shape=input_shape, name="input_layer")
+x = Conv2D(32, (3, 3), activation='relu')(input_tensor)
+x = MaxPooling2D((2, 2))(x)
+x = Conv2D(64, (3, 3), activation='relu')(x)
+x = MaxPooling2D((2, 2))(x)
+x = Flatten()(x)
+embedding = Dense(128, activation='relu', name='embedding')(x)
+output = Dense(num_classes, activation='softmax')(embedding)
 
-# Callbacks
-callbacks = [
-    EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True),
-    ModelCheckpoint(MODEL_PATH, save_best_only=True)
-]
+model = Model(inputs=input_tensor, outputs=output)
+model.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
 
-# Train
-model.fit(
-    train_data,
-    validation_data=val_data,
-    epochs=EPOCHS,
-    callbacks=callbacks
-)
+# Training
+model.fit(train_data, validation_data=val_data, epochs=epochs)
 
-# Save final model
-model.save(MODEL_PATH)
-print(f"✅ Model saved at {MODEL_PATH}")
+# Save the model
+os.makedirs('models', exist_ok=True)
+model.save(model_path)
+print("✅ Model saved at", model_path)

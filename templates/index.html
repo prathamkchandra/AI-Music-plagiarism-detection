@@ -1,37 +1,23 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>Music Plagiarism Checker</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f6f6f6;
-            text-align: center;
-            padding: 50px;
-        }
-        input, button {
-            margin: 10px;
-            padding: 10px;
-        }
-        ul { list-style: none; padding: 0; }
-        li { background: #eee; margin: 5px; padding: 8px; border-radius: 5px; }
-    </style>
 </head>
 <body>
-    <h1>Upload Your Song</h1>
-    <form method="POST" enctype="multipart/form-data">
-        <input type="file" name="audio_file" accept=".mp3,.wav" required>
+    <h1>Upload a Song to Check Similarity</h1>
+    <form method="post" enctype="multipart/form-data">
+        <input type="file" name="audio_file" required>
         <button type="submit">Check Similarity</button>
     </form>
 
-    {% if plagiarism_percent %}
-        <h2>Plagiarism Score: {{ plagiarism_percent }}%</h2>
-        <h3>Top Matches:</h3>
-        <ul>
-        {% for item in prediction %}
-            <li>{{ item.filename }} - {{ item.similarity }}%</li>
-        {% endfor %}
-        </ul>
+    {% if error %}
+        <p style="color: red;">Error: {{ error }}</p>
+    {% endif %}
+
+    {% if prediction %}
+        <h2>🎧 Match Found: {{ prediction }}</h2>
+        <p>🔍 Similarity Score: {{ plagiarism_percent }}%</p>
     {% endif %}
 </body>
 </html>
