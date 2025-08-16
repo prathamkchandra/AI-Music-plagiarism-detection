@@ -1,0 +1,31 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+venv/
+.env
+*.env
+
+# AI/ML Models
+models/
+*.pth
+*.h5
+
+# Data/Generated files
+Melody_Embeddings/
+Data/
+Spectrograms/
+audio_hashes.txt
+fingerprints.json
+static/
+
+# Flask static (ignore if only generated, keep if frontend assets live here)
+# static/
+
+# Logs
+*.log
+
+# OS/System
+.DS_Store
+Thumbs.db

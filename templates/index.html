@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title> Music Plagiarism Checker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Reset & Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            padding: 20px;
+            text-align: center;
+            color: #fff;
+        }
+
+        /* Header */
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            color: #f9ca24;
+        }
+        p {
+            color: #dcdde1;
+            margin-bottom: 25px;
+            font-size: 1rem;
+        }
+
+        /* Form */
+        form {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 25px;
+            border-radius: 15px;
+            display: inline-block;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+        }
+        form:hover {
+            transform: translateY(-5px);
+        }
+        input[type="file"] {
+            margin: 15px 0;
+            padding: 10px;
+            border: none;
+            background: rgba(255,255,255,0.15);
+            border-radius: 8px;
+            color: #fff;
+            outline: none;
+        }
+        button {
+            padding: 10px 25px;
+            background: linear-gradient(45deg, #ff9f43, #ff6b6b);
+            border: none;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: 0.3s ease;
+        }
+        button:hover {
+            background: linear-gradient(45deg, #ff6b6b, #ff9f43);
+            transform: scale(1.05);
+        }
+
+        /* Loader */
+        .loader {
+            display: none;
+            margin-top: 20px;
+        }
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top: 4px solid #ff9f43;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); } 
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Result Card */
+        .result {
+            margin-top: 30px;
+            background: rgba(255,255,255,0.08);
+            padding: 20px;
+            border-radius: 15px;
+            display: inline-block;
+            box-shadow: 0px 4px 15px rgba(0,0,0,0.25);
+            width: 100%;
+            max-width: 500px;
+            animation: fadeIn 0.6s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .no-match {
+            color: #ff4d4d;
+            font-weight: bold;
+        }
+
+        /* Audio Player */
+        audio {
+            margin-top: 10px;
+            width: 90%;
+            border-radius: 8px;
+            outline: none;
+        }
+
+        /* Similarity Score Badge */
+        .score-badge {
+            display: inline-block;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            color: #fff;
+            margin-top: 10px;
+        }
+        .score-high {
+            background: #e84118;
+        }
+        .score-low {
+            background: #44bd32;
+        }
+    </style>
+</head>
+<body>
+    <h1> Music Plagiarism Checker</h1>
+    <p>Upload your song and find out how similar it is to our dataset.</p>
+
+    <!-- Upload form -->
+    <form id="uploadForm" action="/" method="POST" enctype="multipart/form-data">
+        <input type="file" name="file" accept=".mp3,.wav,.flac" required>
+        <br>
+        <button type="submit"> Check Similarity</button>
+    </form>
+
+    <!-- Loader -->
+    <div class="loader" id="loadingSpinner">
+        <div class="spinner"></div>
+        <p>Please wait... Analyzing your song </p>
+    </div>
+
+    {% if match_label is defined and match_label %}
+    <div class="result">
+        {% if uploaded_song %}
+            <p>🎧 Uploaded Song: <b>{{ uploaded_song }}</b></p>
+            {% if uploaded_song_path %}
+                <audio controls>
+                    <source src="{{ url_for('static', filename=uploaded_song_path) }}" type="audio/mpeg">
+                </audio>
+            {% endif %}
+        {% endif %}
+
+        {% if match_song %}
+            <p> Matched Song: <b>{{ match_song }}</b></p>
+            <p> Category: <b>{{ match_label }}</b></p>
+            {% if match_song_path %}
+                <audio controls>
+                    <source src="{{ url_for('static', filename=match_song_path) }}" type="audio/mpeg">
+                </audio>
+            {% endif %}
+            <div class="score-badge {{ 'score-high' if final_score >= 80 else 'score-low' }}">
+                Similarity: {{ final_score }}%
+            </div>
+        {% else %}
+            <p class="no-match"> No match found in the dataset.</p>
+        {% endif %}
+
+        <!-- Pie Chart -->
+        <canvas id="similarityChart" width="300" height="300"></canvas>
+        <script>
+            const score = {{ final_score if final_score else 0 }};
+            const ctx = document.getElementById('similarityChart').getContext('2d');
+            const chartColor = score >= 80 ? '#e84118' : '#44bd32';
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Similarity %', 'Unique Content %'],
+                    datasets: [{
+                        data: [score, 100 - score],
+                        backgroundColor: [chartColor, '#353b48']
+                    }]
+                },
+                options: {
+                    responsive: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#fff' } }
+                    }
+                }
+            });
+        </script>
+    </div>
+    {% endif %}
+
+    <script>
+        document.getElementById("uploadForm").addEventListener("submit", function() {
+            document.getElementById("uploadForm").style.display = "none";
+            document.getElementById("loadingSpinner").style.display = "block";
+        });
+    </script>
+</body>
+</html>
