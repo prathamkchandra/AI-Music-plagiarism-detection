@@ -14,9 +14,8 @@ models/
 
 # Data/Generated files
 Melody_Embeddings/
-Data/
+model/
 Spectrograms/
-audio_hashes.txt
 fingerprints.json
 static/
 

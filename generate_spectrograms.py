@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Input audio dataset directory
-dataset_audio_dir = './model/Audio'
+dataset_audio_dir = './Data/Audio'
 dataset_spectrogram_dir = './Spectrograms'
 
 os.makedirs(dataset_spectrogram_dir, exist_ok=True)

@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title> Music Plagiarism Checker</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -26,7 +27,7 @@
             color: #f9ca24;
         }
         p {
-            color: #dcdde1;
+            color: #bbb;
             margin-bottom: 25px;
             font-size: 1rem;
         }
@@ -34,11 +35,13 @@
         /* Form */
         form {
             background: rgba(255, 255, 255, 0.08);
-            padding: 25px;
+            padding: 20px;
             border-radius: 15px;
             display: inline-block;
             box-shadow: 0 4px 20px rgba(0,0,0,0.2);
             transition: transform 0.3s ease;
+            max-width: 100%;
+            width: 400px;
         }
         form:hover {
             transform: translateY(-5px);
@@ -49,18 +52,20 @@
             border: none;
             background: rgba(255,255,255,0.15);
             border-radius: 8px;
-            color: #fff;
+            color: #0f0c0c;
             outline: none;
+            width: 100%;
         }
         button {
             padding: 10px 25px;
             background: linear-gradient(45deg, #ff9f43, #ff6b6b);
             border: none;
-            color: white;
+            color: #fff;
             font-size: 1rem;
             cursor: pointer;
             border-radius: 8px;
             transition: 0.3s ease;
+            width: 100%;
         }
         button:hover {
             background: linear-gradient(45deg, #ff6b6b, #ff9f43);
@@ -95,7 +100,7 @@
             display: inline-block;
             box-shadow: 0px 4px 15px rgba(0,0,0,0.25);
             width: 100%;
-            max-width: 500px;
+            max-width: 780px;
             animation: fadeIn 0.6s ease-in-out;
         }
         @keyframes fadeIn {
@@ -110,7 +115,7 @@
         /* Audio Player */
         audio {
             margin-top: 10px;
-            width: 90%;
+            width: 100%;
             border-radius: 8px;
             outline: none;
         }
@@ -124,11 +129,26 @@
             color: #fff;
             margin-top: 10px;
         }
-        .score-high {
-            background: #e84118;
+        .score-high { background: #e84118; }
+        .score-low { background: #44bd32; }
+
+        /* Chart */
+        #similarityChart {
+            max-width: 100%;
+            height: auto;
         }
-        .score-low {
-            background: #44bd32;
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            h1 { font-size: 1.8rem; }
+            p { font-size: 0.9rem; }
+            form, .result { width: 90%; }
+            button { font-size: 0.9rem; }
+        }
+        @media (max-width: 480px) {
+            h1 { font-size: 1.5rem; }
+            p { font-size: 0.85rem; }
+            .score-badge { font-size: 0.9rem; padding: 6px 12px; }
         }
     </style>
 </head>
@@ -151,36 +171,40 @@
 
     {% if match_label is defined and match_label %}
     <div class="result">
+        <!-- Uploaded song -->
         {% if uploaded_song %}
             <p>🎧 Uploaded Song: <b>{{ uploaded_song }}</b></p>
             {% if uploaded_song_path %}
                 <audio controls>
                     <source src="{{ url_for('static', filename=uploaded_song_path) }}" type="audio/mpeg">
+                    Your browser does not support the audio element.
                 </audio>
             {% endif %}
         {% endif %}
 
+        <!-- Matched song -->
         {% if match_song %}
             <p> Matched Song: <b>{{ match_song }}</b></p>
             <p> Category: <b>{{ match_label }}</b></p>
             {% if match_song_path %}
                 <audio controls>
                     <source src="{{ url_for('static', filename=match_song_path) }}" type="audio/mpeg">
+                    Your browser does not support the audio element.
                 </audio>
             {% endif %}
-            <div class="score-badge {{ 'score-high' if final_score >= 80 else 'score-low' }}">
+            <div class="score-badge {{ 'score-high' if final_score >= 85 else 'score-low' }}">
                 Similarity: {{ final_score }}%
             </div>
         {% else %}
             <p class="no-match"> No match found in the dataset.</p>
         {% endif %}
 
-        <!-- Pie Chart -->
-        <canvas id="similarityChart" width="300" height="300"></canvas>
+        <!-- Similarity Pie Chart -->
+        <canvas id="similarityChart"></canvas>
         <script>
             const score = {{ final_score if final_score else 0 }};
             const ctx = document.getElementById('similarityChart').getContext('2d');
-            const chartColor = score >= 80 ? '#e84118' : '#44bd32';
+            const chartColor = score >= 85 ? '#e84118' : '#44bd32';
             new Chart(ctx, {
                 type: 'pie',
                 data: {
@@ -191,7 +215,8 @@
                     }]
                 },
                 options: {
-                    responsive: false,
+                    responsive: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: { position: 'bottom', labels: { color: '#fff' } }
                     }

@@ -14,7 +14,7 @@ model_path = 'models/latest_model.keras'
 class_folders = [d for d in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, d))]
 num_classes = len(class_folders)
 
-# Params
+# Params 
 input_shape = (128, 128, 3)
 batch_size = 32
 epochs = 100

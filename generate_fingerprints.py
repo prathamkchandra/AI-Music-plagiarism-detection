@@ -17,7 +17,7 @@ for root, dirs, files in os.walk(DATASET_DIR):
             file_path = os.path.join(root, file)
 
             try:
-                print(f"🔍 Processing {file} ...")
+                print(f" Processing {file} ...")
                 # Run fpcalc
                 result = subprocess.run(
                     ["fpcalc", "-raw", file_path],

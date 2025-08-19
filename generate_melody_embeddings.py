@@ -7,7 +7,7 @@ def extract_melody_embedding(audio_path):
     chroma = librosa.feature.chroma_stft(y=y, sr=sr, n_chroma=12)
     return np.mean(chroma, axis=1)
 
-dataset_audio_dir = "./model/Audio_files/Movie_songs/Navarasm"
+dataset_audio_dir = "./Data/Audio"
 output_dir = "./Melody_Embeddings"
 os.makedirs(output_dir, exist_ok=True)
 
@@ -32,4 +32,4 @@ for genre in os.listdir(dataset_audio_dir):
         else:
             print(f"⚠ Skipping unsupported format: {file}")
 
-print("🎯 Melody embedding generation completed.")
+print(" Melody embedding generation completed.")
