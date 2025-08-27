@@ -3,7 +3,7 @@ import json
 import subprocess
 
 # Path to your dataset audio files
-DATASET_DIR = r"C:\Users\Pratham K Chandra\Desktop\Music-plaigarism\static\dataset\Audio_files"
+DATASET_DIR = r"C:\Users\Pratham K Chandra\Desktop\Music-plaigarism\model\Audio_files"
 OUTPUT_FILE = "fingerprints.json"
 
 # Supported audio formats
@@ -35,7 +35,7 @@ for root, dirs, files in os.walk(DATASET_DIR):
                     if line.startswith("FINGERPRINT="):
                         fingerprint = line.split("=", 1)[1]
                         fingerprints[file] = fingerprint
-                        print(f"✅ Fingerprint extracted for {file}")
+                        print(f" Fingerprint extracted for {file}")
                         break
 
             except Exception as e:

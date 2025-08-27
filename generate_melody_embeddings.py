@@ -7,7 +7,7 @@ def extract_melody_embedding(audio_path):
     chroma = librosa.feature.chroma_stft(y=y, sr=sr, n_chroma=12)
     return np.mean(chroma, axis=1)
 
-dataset_audio_dir = "./Data/Audio"
+dataset_audio_dir = "./model/Audio_files"
 output_dir = "./Melody_Embeddings"
 os.makedirs(output_dir, exist_ok=True)
 
@@ -20,7 +20,7 @@ for genre in os.listdir(dataset_audio_dir):
     os.makedirs(output_genre_dir, exist_ok=True)
 
     for file in os.listdir(genre_path):
-        # ✅ Skip MP4 files completely
+        #  Skip MP4 files completely
         if file.lower().endswith(('.wav', '.mp3', '.flac', '.ogg', '.m4a')):  
             audio_path = os.path.join(genre_path, file)
             try:

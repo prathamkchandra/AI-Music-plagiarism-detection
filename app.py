@@ -1,51 +1,40 @@
-from flask import Flask, request, render_template, url_for
-import os, json
+from flask import Flask, request, render_template
+import os, json, urllib.parse
 from generate_spectrogram import generate_spectrogram
 from compare import compare_with_dataset, generate_fingerprint
 
-# Flask app
+# ------------------------------
+# Flask app setup
+# ------------------------------
 app = Flask(__name__)
 
+# ------------------------------
 # Paths
+# ------------------------------
 UPLOAD_FOLDER = os.path.join("static", "uploads")
-DATASET_AUDIO_DIR = os.path.join("static", "dataset", "Audio_files")
-DATASET_SPEC_DIR = "./Spectrograms"
-MELODY_EMB_DIR = "./Melody_Embeddings"
+DATASET_AUDIO_DIR = os.path.join("static", "Audio_files")
 FINGERPRINTS_FILE = "fingerprints.json"
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# -------------------------------
-# 🔄 Preload fingerprints at startup
-# -------------------------------
+# ------------------------------
+# Preload fingerprints
+# ------------------------------
 if os.path.exists(FINGERPRINTS_FILE):
     with open(FINGERPRINTS_FILE, "r", encoding="utf-8") as f:
         FINGERPRINTS = json.load(f)
-    print(f"✅ Loaded {len(FINGERPRINTS)} fingerprints.")
+    print(f" Loaded {len(FINGERPRINTS)} fingerprints.")
 else:
     FINGERPRINTS = {}
     print("⚠ No fingerprints.json found. Fingerprint matching disabled.")
 
-# -------------------------------
-# 🔄 Preload dataset embeddings once
-# (CNN + melody embeddings are loaded only once in compare_with_dataset)
-# -------------------------------
-print("🔄 Initializing dataset embeddings (CNN + Melody)...")
-from compare import compare_with_dataset
-# from compare import preload_embeddings
-# DATASET_EMBEDDINGS = preload_embeddings(
-#     dataset_audio_dir=DATASET_AUDIO_DIR,
-#     dataset_spec_dir=DATASET_SPEC_DIR,
-#     melody_embedding_dir=MELODY_EMB_DIR
-# )
-# print(f"✅ Cached {len(DATASET_EMBEDDINGS)} dataset embeddings.")
-
-
+# ------------------------------
+# Home / Upload route
+# ------------------------------
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
         file = request.files.get("file")
-
         if not file:
             return render_template(
                 "index.html",
@@ -57,34 +46,50 @@ def index():
                 final_score=None
             )
 
-        # Save uploaded file
+        # Save uploaded file with URL-safe filename
+        safe_filename = urllib.parse.quote(file.filename)
         file_path = os.path.join(UPLOAD_FOLDER, file.filename)
         file.save(file_path)
-        uploaded_song_path = f"uploads/{file.filename}"
+        uploaded_song_path = f"uploads/{safe_filename}"
 
-        # -------------------------------
+        # ------------------------------
         # Step 1 — Fingerprint exact match
-        # -------------------------------
+        # ------------------------------
+        # Step 1 — Fingerprint exact match
         try:
             user_fp = generate_fingerprint(file_path)
             if user_fp:
                 for dataset_file, dataset_fp in FINGERPRINTS.items():
                     if dataset_fp == user_fp:
+                        # Split folder/song if stored as "folder/songname"
+                        if "/" in dataset_file:
+                            folder, song_name = dataset_file.split("/")
+                        else:
+                            folder, song_name = "", dataset_file
+
+                        folder_safe = urllib.parse.quote(folder)
+                        song_safe = urllib.parse.quote(song_name + ".mp3")
+
+                        # Build match path relative to static
+                        match_song_path = f"Audio_files/{folder_safe}/{song_safe}".replace("\\", "/")
+
+                        # ✅ Exact match always stays 100%
                         return render_template(
                             "index.html",
                             uploaded_song=file.filename,
-                            uploaded_song_path=uploaded_song_path,
+                            uploaded_song_path=f"uploads/{safe_filename}",
                             match_label="Exact Match (Fingerprint)",
-                            match_song=dataset_file,
-                            match_song_path=f"dataset/Audio_files/{dataset_file}",
+                            match_song=song_name,
+                            match_song_path=match_song_path,
                             final_score=100.0
                         )
         except Exception as e:
             print(f"⚠ Fingerprint check failed: {e}")
 
-        # -------------------------------
+
+        # ------------------------------
         # Step 2 — Spectrogram + CNN + Melody
-        # -------------------------------
+        # ------------------------------
         user_spec_path = generate_spectrogram(file_path)
         if not user_spec_path:
             return render_template(
@@ -98,12 +103,7 @@ def index():
             )
 
         try:
-                result = compare_with_dataset(
-                user_spec_path,
-                user_audio_path=file_path,
-                threshold=0.85
-                )
-
+            result = compare_with_dataset(user_spec_path, user_audio_path=file_path, threshold=0.70)
         except Exception as e:
             return render_template(
                 "index.html",
@@ -115,10 +115,14 @@ def index():
                 final_score=None
             )
 
-        # Build dataset song path if found
+        # ------------------------------
+        # Build dataset song path if found (dynamic subfolders)
+        # ------------------------------
         match_song_path = None
         if result.get("match_song") and result.get("match_label") != "No match found":
-            match_song_path = f"dataset/Audio_files/{result['match_label']}/{result['match_song']}.mp3"
+            folder_safe = urllib.parse.quote(result.get("match_label"))
+            song_safe = urllib.parse.quote(result.get("match_song") + ".mp3")
+            match_song_path = f"Audio_files/{folder_safe}/{song_safe}"
 
         return render_template(
             "index.html",
@@ -130,9 +134,9 @@ def index():
             final_score=result.get("final_score")
         )
 
-    # -------------------------------
-    # GET request → just render empty
-    # -------------------------------
+    # ------------------------------
+    # GET request → render empty form
+    # ------------------------------
     return render_template(
         "index.html",
         uploaded_song=None,
@@ -143,6 +147,8 @@ def index():
         final_score=None
     )
 
-
+# ------------------------------
+# Start server
+# ------------------------------
 if __name__ == "__main__":
     app.run(debug=True)

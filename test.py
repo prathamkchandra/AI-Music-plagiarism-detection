@@ -7,7 +7,7 @@ from keras.models import load_model, Model
 # Paths
 dataset_spec_dir = "./Spectrograms"
 melody_embedding_dir = "./Melody_Embeddings"
-model_path = "models/latest_model.keras"
+model_path = "models/"
 
 # Load CNN model for embedding extraction
 base_model = load_model(model_path)

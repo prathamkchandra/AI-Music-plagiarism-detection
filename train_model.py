@@ -1,61 +1,163 @@
-# train_model.py
 import os
 import numpy as np
+import random
+import tensorflow as tf
 from keras.models import Model
-from keras.layers import Input, Conv2D, MaxPooling2D, Flatten, Dense
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from keras.layers import Input, Conv2D, MaxPooling2D, Flatten, Dense, Dropout, BatchNormalization, Concatenate, LeakyReLU
 from keras.optimizers import Adam
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau
+from tensorflow.keras.preprocessing.image import load_img, img_to_array
 
-# Set paths
-data_dir = './Spectrograms'
-model_path = 'models/latest_model.keras'
+# ------------------------
+# Paths
+# ------------------------
+spectrogram_dir = './Spectrograms'
+melody_dir = './Melody_Embeddings'
+model_path = 'models/multimodal.keras'
 
-# Filter only valid class folders (directories only)
-class_folders = [d for d in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, d))]
-num_classes = len(class_folders)
-
-# Params 
+# ------------------------
+# Params
+# ------------------------
 input_shape = (128, 128, 3)
-batch_size = 32
-epochs = 100
+melody_shape = (12,)
+batch_size = 16
+epochs = 50
+train_ratio = 0.7
+val_ratio = 0.15
+test_ratio = 0.15
+random.seed(42)
 
-# Image generators
-datagen = ImageDataGenerator(rescale=1./255, validation_split=0.2)
-train_data = datagen.flow_from_directory(
-    data_dir,
-    target_size=input_shape[:2],
-    batch_size=batch_size,
-    class_mode='categorical',
-    subset='training'
-)
-val_data = datagen.flow_from_directory(
-    data_dir,
-    target_size=input_shape[:2],
-    batch_size=batch_size,
-    class_mode='categorical',
-    subset='validation'
-)
+# ------------------------
+# Load data
+# ------------------------
+all_samples = []
+class_names = sorted([d for d in os.listdir(spectrogram_dir) if os.path.isdir(os.path.join(spectrogram_dir, d))])
+class_to_index = {c: i for i, c in enumerate(class_names)}
 
-# 🔍 Debugging: Show detected classes
-print("Detected Classes:", train_data.class_indices)
+for cls in class_names:
+    spec_class_dir = os.path.join(spectrogram_dir, cls)
+    for fname in os.listdir(spec_class_dir):
+        if not fname.endswith('.png'):
+            continue
+        mel_path = os.path.join(melody_dir, cls, fname.replace('.png', '.npy'))
+        if not os.path.exists(mel_path):
+            continue
+        all_samples.append({'spectrogram': os.path.join(spec_class_dir, fname),
+                            'melody': mel_path,
+                            'label': class_to_index[cls]})
 
-# Model definition using Functional API
-input_tensor = Input(shape=input_shape, name="input_layer")
-x = Conv2D(32, (3, 3), activation='relu')(input_tensor)
-x = MaxPooling2D((2, 2))(x)
-x = Conv2D(64, (3, 3), activation='relu')(x)
-x = MaxPooling2D((2, 2))(x)
+random.shuffle(all_samples)
+n_total = len(all_samples)
+n_train = int(train_ratio * n_total)
+n_val = int(val_ratio * n_total)
+n_test = n_total - n_train - n_val
+
+train_samples = all_samples[:n_train]
+val_samples = all_samples[n_train:n_train+n_val]
+test_samples = all_samples[n_train+n_val:]
+
+print(f"Total: {n_total}, Train: {len(train_samples)}, Val: {len(val_samples)}, Test: {len(test_samples)}")
+
+# ------------------------
+# Data generator
+# ------------------------
+def multimodal_generator_tf(samples, batch_size, num_classes, input_shape, melody_shape, shuffle=True):
+    while True:
+        if shuffle:
+            random.shuffle(samples)
+        for i in range(0, len(samples), batch_size):
+            batch = samples[i:i+batch_size]
+            imgs = np.zeros((len(batch), *input_shape), dtype=np.float32)
+            melodies = np.zeros((len(batch), *melody_shape), dtype=np.float32)
+            labels = np.zeros((len(batch), num_classes), dtype=np.float32)
+
+            for idx, s in enumerate(batch):
+                img = img_to_array(load_img(s['spectrogram'], target_size=input_shape[:2])) / 255.0
+                mel = np.load(s['melody'])
+                imgs[idx] = img
+                melodies[idx] = mel
+                labels[idx, s['label']] = 1.0
+
+            yield (tf.convert_to_tensor(imgs), tf.convert_to_tensor(melodies)), tf.convert_to_tensor(labels)
+
+# ------------------------
+# Model with extra Conv2D block + LeakyReLU + bigger Dense layers
+# ------------------------
+def conv_block(x, filters):
+    x = Conv2D(filters, (3,3), padding='same')(x)
+    x = LeakyReLU(alpha=0.1)(x)
+    x = BatchNormalization()(x)
+    x = MaxPooling2D((2,2))(x)
+    return x
+
+input_image = Input(shape=input_shape, name='spectrogram_input')
+x = conv_block(input_image, 32)
+x = conv_block(x, 64)
+x = conv_block(x, 128)
+x = conv_block(x, 256)  # New extra block
+
 x = Flatten()(x)
-embedding = Dense(128, activation='relu', name='embedding')(x)
-output = Dense(num_classes, activation='softmax')(embedding)
+cnn_embedding = Dense(512, name="embedding")(x)  
+cnn_embedding = LeakyReLU(alpha=0.1)(cnn_embedding)
+cnn_embedding = Dropout(0.5)(cnn_embedding)
 
-model = Model(inputs=input_tensor, outputs=output)
-model.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
+input_melody = Input(shape=melody_shape, name='melody_input')
+melody_dense = Dense(128)(input_melody)
+melody_dense = LeakyReLU(alpha=0.1)(melody_dense)
+melody_dense = Dropout(0.3)(melody_dense)
 
+combined = Concatenate()([cnn_embedding, melody_dense])
+combined = Dense(256)(combined)
+combined = LeakyReLU(alpha=0.1)(combined)
+combined = Dropout(0.5)(combined)
+output = Dense(len(class_names), activation='softmax')(combined)
+
+model = Model(inputs=[input_image, input_melody], outputs=output)
+model.compile(optimizer=Adam(learning_rate=0.0005),
+              loss='categorical_crossentropy',
+              metrics=['accuracy'])
+
+# ------------------------
+# Callbacks
+# ------------------------
+early_stop = EarlyStopping(monitor='val_accuracy', patience=8, restore_best_weights=True)
+reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=1e-6)
+
+# ------------------------
+# Generators
+# ------------------------
+train_gen = multimodal_generator_tf(train_samples, batch_size, len(class_names), input_shape, melody_shape)
+val_gen = multimodal_generator_tf(val_samples, batch_size, len(class_names), input_shape, melody_shape, shuffle=False)
+test_gen = multimodal_generator_tf(test_samples, batch_size, len(class_names), input_shape, melody_shape, shuffle=False)
+
+steps_per_epoch = (len(train_samples) + batch_size - 1) // batch_size
+validation_steps = (len(val_samples) + batch_size - 1) // batch_size
+test_steps = (len(test_samples) + batch_size - 1) // batch_size
+
+# ------------------------
 # Training
-model.fit(train_data, validation_data=val_data, epochs=epochs)
+# ------------------------
+history = model.fit(
+    train_gen,
+    validation_data=val_gen,
+    steps_per_epoch=steps_per_epoch,
+    validation_steps=validation_steps,
+    epochs=epochs,
+    callbacks=[early_stop, reduce_lr]
+)
 
-# Save the model
+# ------------------------
+# Save model
+# ------------------------
 os.makedirs('models', exist_ok=True)
 model.save(model_path)
-print(" Model saved at", model_path)
+print(f"Model saved at {model_path}")
+
+# ------------------------
+# Evaluate
+# ------------------------
+val_loss, val_acc = model.evaluate(val_gen, steps=validation_steps)
+print(f"Validation Accuracy: {val_acc*100:.2f}%")
+
+test_loss, test_acc = model.evaluate(test_gen, steps=test_steps)
+print(f"Test Accuracy: {test_acc*100:.2f}%")

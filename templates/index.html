@@ -2,62 +2,44 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> Music Plagiarism Checker</title>
+    <title>Music Plagiarism Checker</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Reset & Base Styles */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #1a1a2e, #16213e);
-            padding: 20px;
+            background: linear-gradient(135deg, #1e1e2f, #12121b);
+            color: #f1f1f1;
             text-align: center;
-            color: #fff;
+            padding: 30px 15px;
         }
 
-        /* Header */
-        h1 {
-            font-size: 2.2rem;
-            margin-bottom: 10px;
-            color: #f9ca24;
-        }
-        p {
-            color: #bbb;
-            margin-bottom: 25px;
-            font-size: 1rem;
-        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #ffcc70; }
+        p { margin-bottom: 25px; font-size: 1rem; color: #dcdcdc; }
 
-        /* Form */
         form {
-            background: rgba(255, 255, 255, 0.08);
-            padding: 20px;
+            background: rgba(255,255,255,0.07);
+            padding: 25px;
             border-radius: 15px;
             display: inline-block;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 25px rgba(0,0,0,0.4);
             transition: transform 0.3s ease;
-            max-width: 100%;
-            width: 400px;
+            width: 100%;
+            max-width: 420px;
         }
-        form:hover {
-            transform: translateY(-5px);
-        }
+        form:hover { transform: translateY(-5px); }
         input[type="file"] {
             margin: 15px 0;
             padding: 10px;
             border: none;
-            background: rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.1);
             border-radius: 8px;
-            color: #0f0c0c;
-            outline: none;
+            color: #fff;
             width: 100%;
+            cursor: pointer;
         }
         button {
-            padding: 10px 25px;
+            padding: 12px 25px;
             background: linear-gradient(45deg, #ff9f43, #ff6b6b);
             border: none;
             color: #fff;
@@ -67,170 +49,134 @@
             transition: 0.3s ease;
             width: 100%;
         }
-        button:hover {
-            background: linear-gradient(45deg, #ff6b6b, #ff9f43);
-            transform: scale(1.05);
-        }
+        button:hover { background: linear-gradient(45deg, #ff6b6b, #ff9f43); transform: scale(1.05); }
 
-        /* Loader */
-        .loader {
-            display: none;
-            margin-top: 20px;
-        }
+        .loader { display: none; margin-top: 20px; text-align: center; }
         .spinner {
             border: 4px solid rgba(255,255,255,0.1);
             border-top: 4px solid #ff9f43;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
+            width: 45px;
+            height: 45px;
             animation: spin 1s linear infinite;
             margin: auto;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); } 
-            100% { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Result Card */
         .result {
             margin-top: 30px;
             background: rgba(255,255,255,0.08);
-            padding: 20px;
+            padding: 25px;
             border-radius: 15px;
             display: inline-block;
-            box-shadow: 0px 4px 15px rgba(0,0,0,0.25);
             width: 100%;
-            max-width: 780px;
+            max-width: 800px;
+            box-shadow: 0 4px 25px rgba(0,0,0,0.4);
             animation: fadeIn 0.6s ease-in-out;
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(15px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .no-match {
-            color: #ff4d4d;
-            font-weight: bold;
-        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Audio Player */
-        audio {
-            margin-top: 10px;
-            width: 100%;
-            border-radius: 8px;
-            outline: none;
-        }
+        .no-match { color: #ff4d4d; font-weight: bold; }
+        audio { margin-top: 10px; width: 90%; border-radius: 8px; outline: none; }
 
-        /* Similarity Score Badge */
         .score-badge {
             display: inline-block;
-            padding: 8px 15px;
+            padding: 8px 18px;
             border-radius: 20px;
             font-weight: bold;
             color: #fff;
             margin-top: 10px;
+            font-size: 1rem;
         }
         .score-high { background: #e84118; }
         .score-low { background: #44bd32; }
-
-        /* Chart */
-        #similarityChart {
-            max-width: 100%;
-            height: auto;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            h1 { font-size: 1.8rem; }
-            p { font-size: 0.9rem; }
-            form, .result { width: 90%; }
-            button { font-size: 0.9rem; }
-        }
-        @media (max-width: 480px) {
-            h1 { font-size: 1.5rem; }
-            p { font-size: 0.85rem; }
-            .score-badge { font-size: 0.9rem; padding: 6px 12px; }
-        }
     </style>
 </head>
 <body>
-    <h1> Music Plagiarism Checker</h1>
-    <p>Upload your song and find out how similar it is to our dataset.</p>
+   <h1>Music Plagiarism Checker</h1>
+<p>Upload your track to check similarity with our dataset.</p>
 
-    <!-- Upload form -->
-    <form id="uploadForm" action="/" method="POST" enctype="multipart/form-data">
-        <input type="file" name="file" accept=".mp3,.wav,.flac" required>
-        <br>
-        <button type="submit"> Check Similarity</button>
-    </form>
+<form id="uploadForm" action="/" method="POST" enctype="multipart/form-data">
+    <input type="file" name="file" accept=".mp3,.wav,.flac" required>
+    <button type="submit">Check Similarity</button>
+</form>
 
-    <!-- Loader -->
-    <div class="loader" id="loadingSpinner">
-        <div class="spinner"></div>
-        <p>Please wait... Analyzing your song </p>
-    </div>
+<div class="loader" id="loadingSpinner">
+    <div class="spinner"></div>
+    <p>Analyzing your song... Please wait</p>
+</div>
 
-    {% if match_label is defined and match_label %}
-    <div class="result">
-        <!-- Uploaded song -->
-        {% if uploaded_song %}
-            <p>🎧 Uploaded Song: <b>{{ uploaded_song }}</b></p>
-            {% if uploaded_song_path %}
-                <audio controls>
-                    <source src="{{ url_for('static', filename=uploaded_song_path) }}" type="audio/mpeg">
-                    Your browser does not support the audio element.
-                </audio>
-            {% endif %}
+{% if match_label %}
+<div class="result">
+    {% if uploaded_song %}
+        <p>🎧 Uploaded Song: <b>{{ uploaded_song }}</b></p>
+        {% if uploaded_song_path %}
+            <audio controls>
+                <source src="/static/{{ uploaded_song_path }}" type="audio/mpeg">
+                Your browser does not support the audio element.
+            </audio>
         {% endif %}
-
-        <!-- Matched song -->
-        {% if match_song %}
-            <p> Matched Song: <b>{{ match_song }}</b></p>
-            <p> Category: <b>{{ match_label }}</b></p>
-            {% if match_song_path %}
-                <audio controls>
-                    <source src="{{ url_for('static', filename=match_song_path) }}" type="audio/mpeg">
-                    Your browser does not support the audio element.
-                </audio>
-            {% endif %}
-            <div class="score-badge {{ 'score-high' if final_score >= 85 else 'score-low' }}">
-                Similarity: {{ final_score }}%
-            </div>
-        {% else %}
-            <p class="no-match"> No match found in the dataset.</p>
-        {% endif %}
-
-        <!-- Similarity Pie Chart -->
-        <canvas id="similarityChart"></canvas>
-        <script>
-            const score = {{ final_score if final_score else 0 }};
-            const ctx = document.getElementById('similarityChart').getContext('2d');
-            const chartColor = score >= 85 ? '#e84118' : '#44bd32';
-            new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: ['Similarity %', 'Unique Content %'],
-                    datasets: [{
-                        data: [score, 100 - score],
-                        backgroundColor: [chartColor, '#353b48']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'bottom', labels: { color: '#fff' } }
-                    }
-                }
-            });
-        </script>
-    </div>
     {% endif %}
 
+    {% if match_song %}
+        <p>Matched Song: <b>{{ match_song }}</b></p>
+        <p>Category: <b>{{ match_label }}</b></p>
+        {% if match_song_path %}
+            <audio controls>
+                <source src="/static/{{ match_song_path }}" type="audio/mpeg">
+                Your browser does not support the audio element.
+            </audio>    
+        {% endif %}
+
+        <!-- Score Badge with Dynamic Color -->
+        {% set badge_color = 'red' if final_score > 85 or final_score == 100 else ('green' if final_score <= 75 else 'orange') %}
+        <div class="score-badge" style="background-color: {{ badge_color }};">
+            Similarity: {{ final_score }}%
+        </div>
+    {% else %}
+        <p class="no-match">No match found in the dataset.</p>
+    {% endif %}
+
+    <canvas id="similarityChart" width="300" height="300"></canvas>
     <script>
-        document.getElementById("uploadForm").addEventListener("submit", function() {
-            document.getElementById("uploadForm").style.display = "none";
-            document.getElementById("loadingSpinner").style.display = "block";
+        const score = {{ final_score if final_score else 0 }};
+        let chartColor = '';
+        if (score > 85 || score === 100) {
+            chartColor = 'red';
+        } else if (score <= 75) {
+            chartColor = 'green';
+        } else {
+            chartColor = 'orange';
+        }
+
+        const ctx = document.getElementById('similarityChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['Similarity %', 'Unique %'],
+                datasets: [{
+                    data: [score, 100 - score],
+                    backgroundColor: [chartColor, '#353b48']
+                }]
+            },
+            options: {
+                responsive: false,
+                plugins: { legend: { position: 'bottom', labels: { color: '#fff' } } }
+            }
         });
     </script>
+</div>
+{% endif %}
+
+
+
+
+<script>
+    document.getElementById("uploadForm").addEventListener("submit", function() {
+        document.getElementById("uploadForm").style.display = "none";
+        document.getElementById("loadingSpinner").style.display = "block";
+    });
+</script>
+
 </body>
 </html>
