@@ -5,7 +5,7 @@ import tensorflow as tf
 from keras.models import Model
 from keras.layers import Input, Conv2D, MaxPooling2D, Flatten, Dense, Dropout, BatchNormalization, Concatenate, LeakyReLU
 from keras.optimizers import Adam
-from keras.callbacks import EarlyStopping, ReduceLROnPlateau
+from keras.callbacks import ReduceLROnPlateau
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
 
 # ------------------------
@@ -21,10 +21,9 @@ model_path = 'models/multimodal.keras'
 input_shape = (128, 128, 3)
 melody_shape = (12,)
 batch_size = 16
-epochs = 50
-train_ratio = 0.7
-val_ratio = 0.15
-test_ratio = 0.15
+epochs = 28
+train_ratio = 0.85   # using 85% for training now
+test_ratio = 0.15    # 15% for testing
 random.seed(42)
 
 # ------------------------
@@ -49,14 +48,12 @@ for cls in class_names:
 random.shuffle(all_samples)
 n_total = len(all_samples)
 n_train = int(train_ratio * n_total)
-n_val = int(val_ratio * n_total)
-n_test = n_total - n_train - n_val
+n_test = n_total - n_train
 
 train_samples = all_samples[:n_train]
-val_samples = all_samples[n_train:n_train+n_val]
-test_samples = all_samples[n_train+n_val:]
+test_samples = all_samples[n_train:]
 
-print(f"Total: {n_total}, Train: {len(train_samples)}, Val: {len(val_samples)}, Test: {len(test_samples)}")
+print(f"Total: {n_total}, Train: {len(train_samples)}, Test: {len(test_samples)}")
 
 # ------------------------
 # Data generator
@@ -81,7 +78,7 @@ def multimodal_generator_tf(samples, batch_size, num_classes, input_shape, melod
             yield (tf.convert_to_tensor(imgs), tf.convert_to_tensor(melodies)), tf.convert_to_tensor(labels)
 
 # ------------------------
-# Model with extra Conv2D block + LeakyReLU + bigger Dense layers
+# Model architecture
 # ------------------------
 def conv_block(x, filters):
     x = Conv2D(filters, (3,3), padding='same')(x)
@@ -94,10 +91,10 @@ input_image = Input(shape=input_shape, name='spectrogram_input')
 x = conv_block(input_image, 32)
 x = conv_block(x, 64)
 x = conv_block(x, 128)
-x = conv_block(x, 256)  # New extra block
+x = conv_block(x, 256)
 
 x = Flatten()(x)
-cnn_embedding = Dense(512, name="embedding")(x)  
+cnn_embedding = Dense(512, name="embedding")(x)
 cnn_embedding = LeakyReLU(alpha=0.1)(cnn_embedding)
 cnn_embedding = Dropout(0.5)(cnn_embedding)
 
@@ -120,18 +117,15 @@ model.compile(optimizer=Adam(learning_rate=0.0005),
 # ------------------------
 # Callbacks
 # ------------------------
-early_stop = EarlyStopping(monitor='val_accuracy', patience=8, restore_best_weights=True)
-reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=1e-6)
+reduce_lr = ReduceLROnPlateau(monitor='loss', factor=0.5, patience=3, min_lr=1e-6)
 
 # ------------------------
 # Generators
 # ------------------------
 train_gen = multimodal_generator_tf(train_samples, batch_size, len(class_names), input_shape, melody_shape)
-val_gen = multimodal_generator_tf(val_samples, batch_size, len(class_names), input_shape, melody_shape, shuffle=False)
 test_gen = multimodal_generator_tf(test_samples, batch_size, len(class_names), input_shape, melody_shape, shuffle=False)
 
 steps_per_epoch = (len(train_samples) + batch_size - 1) // batch_size
-validation_steps = (len(val_samples) + batch_size - 1) // batch_size
 test_steps = (len(test_samples) + batch_size - 1) // batch_size
 
 # ------------------------
@@ -139,11 +133,9 @@ test_steps = (len(test_samples) + batch_size - 1) // batch_size
 # ------------------------
 history = model.fit(
     train_gen,
-    validation_data=val_gen,
     steps_per_epoch=steps_per_epoch,
-    validation_steps=validation_steps,
     epochs=epochs,
-    callbacks=[early_stop, reduce_lr]
+    callbacks=[reduce_lr]
 )
 
 # ------------------------
@@ -154,10 +146,10 @@ model.save(model_path)
 print(f"Model saved at {model_path}")
 
 # ------------------------
-# Evaluate
+# Evaluate on Train & Test
 # ------------------------
-val_loss, val_acc = model.evaluate(val_gen, steps=validation_steps)
-print(f"Validation Accuracy: {val_acc*100:.2f}%")
+train_loss, train_acc = model.evaluate(train_gen, steps=steps_per_epoch)
+print(f"Training Accuracy: {train_acc*100:.2f}%")
 
 test_loss, test_acc = model.evaluate(test_gen, steps=test_steps)
 print(f"Test Accuracy: {test_acc*100:.2f}%")

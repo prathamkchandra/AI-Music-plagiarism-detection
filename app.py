@@ -31,6 +31,9 @@ else:
 # ------------------------------
 # Home / Upload route
 # ------------------------------
+# ------------------------------
+# Home / Upload route
+# ------------------------------
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
@@ -46,7 +49,7 @@ def index():
                 final_score=None
             )
 
-        # Save uploaded file with URL-safe filename
+        # Save uploaded file
         safe_filename = urllib.parse.quote(file.filename)
         file_path = os.path.join(UPLOAD_FOLDER, file.filename)
         file.save(file_path)
@@ -55,13 +58,11 @@ def index():
         # ------------------------------
         # Step 1 — Fingerprint exact match
         # ------------------------------
-        # Step 1 — Fingerprint exact match
         try:
             user_fp = generate_fingerprint(file_path)
             if user_fp:
                 for dataset_file, dataset_fp in FINGERPRINTS.items():
                     if dataset_fp == user_fp:
-                        # Split folder/song if stored as "folder/songname"
                         if "/" in dataset_file:
                             folder, song_name = dataset_file.split("/")
                         else:
@@ -70,14 +71,12 @@ def index():
                         folder_safe = urllib.parse.quote(folder)
                         song_safe = urllib.parse.quote(song_name + ".mp3")
 
-                        # Build match path relative to static
                         match_song_path = f"Audio_files/{folder_safe}/{song_safe}".replace("\\", "/")
 
-                        # ✅ Exact match always stays 100%
                         return render_template(
                             "index.html",
                             uploaded_song=file.filename,
-                            uploaded_song_path=f"uploads/{safe_filename}",
+                            uploaded_song_path=uploaded_song_path,
                             match_label="Exact Match (Fingerprint)",
                             match_song=song_name,
                             match_song_path=match_song_path,
@@ -85,7 +84,6 @@ def index():
                         )
         except Exception as e:
             print(f"⚠ Fingerprint check failed: {e}")
-
 
         # ------------------------------
         # Step 2 — Spectrogram + CNN + Melody
@@ -116,19 +114,19 @@ def index():
             )
 
         # ------------------------------
-        # Build dataset song path if found (dynamic subfolders)
+        # Build dataset song path if found
         # ------------------------------
         match_song_path = None
-        if result.get("match_song") and result.get("match_label") != "No match found":
-            folder_safe = urllib.parse.quote(result.get("match_label"))
+        if result.get("match_song") and result.get("match_folder"):
+            folder_safe = urllib.parse.quote(result.get("match_folder"))
             song_safe = urllib.parse.quote(result.get("match_song") + ".mp3")
-            match_song_path = f"Audio_files/{folder_safe}/{song_safe}"
+            match_song_path = f"Audio_files/{folder_safe}/{song_safe}".replace("\\", "/")
 
         return render_template(
             "index.html",
             uploaded_song=file.filename,
             uploaded_song_path=uploaded_song_path,
-            match_label=result.get("match_label"),
+            match_label=result.get("match_label"),       # descriptive label
             match_song=result.get("match_song"),
             match_song_path=match_song_path,
             final_score=result.get("final_score")
@@ -146,9 +144,3 @@ def index():
         match_song_path=None,
         final_score=None
     )
-
-# ------------------------------
-# Start server
-# ------------------------------
-if __name__ == "__main__":
-    app.run(debug=True)
