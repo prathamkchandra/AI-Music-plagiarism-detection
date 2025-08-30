@@ -20,17 +20,17 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # ------------------------------
 # Preload fingerprints
 # ------------------------------
+FINGERPRINTS = {}
 if os.path.exists(FINGERPRINTS_FILE):
-    with open(FINGERPRINTS_FILE, "r", encoding="utf-8") as f:
-        FINGERPRINTS = json.load(f)
-    print(f" Loaded {len(FINGERPRINTS)} fingerprints.")
+    try:
+        with open(FINGERPRINTS_FILE, "r", encoding="utf-8") as f:
+            FINGERPRINTS = json.load(f)
+        print(f"✅ Loaded {len(FINGERPRINTS)} fingerprints.")
+    except Exception as e:
+        print(f"⚠ Error reading fingerprints.json: {e}")
 else:
-    FINGERPRINTS = {}
     print("⚠ No fingerprints.json found. Fingerprint matching disabled.")
 
-# ------------------------------
-# Home / Upload route
-# ------------------------------
 # ------------------------------
 # Home / Upload route
 # ------------------------------
@@ -39,8 +39,7 @@ def index():
     if request.method == "POST":
         file = request.files.get("file")
         if not file:
-            return render_template(
-                "index.html",
+            return render_template("index.html",
                 uploaded_song=None,
                 uploaded_song_path=None,
                 match_label="No file uploaded",
@@ -49,7 +48,7 @@ def index():
                 final_score=None
             )
 
-        # Save uploaded file
+        # ✅ Save uploaded file
         safe_filename = urllib.parse.quote(file.filename)
         file_path = os.path.join(UPLOAD_FOLDER, file.filename)
         file.save(file_path)
@@ -63,18 +62,12 @@ def index():
             if user_fp:
                 for dataset_file, dataset_fp in FINGERPRINTS.items():
                     if dataset_fp == user_fp:
-                        if "/" in dataset_file:
-                            folder, song_name = dataset_file.split("/")
-                        else:
-                            folder, song_name = "", dataset_file
-
+                        folder, song_name = (dataset_file.split("/") if "/" in dataset_file else ("", dataset_file))
                         folder_safe = urllib.parse.quote(folder)
                         song_safe = urllib.parse.quote(song_name + ".mp3")
-
                         match_song_path = f"Audio_files/{folder_safe}/{song_safe}".replace("\\", "/")
 
-                        return render_template(
-                            "index.html",
+                        return render_template("index.html",
                             uploaded_song=file.filename,
                             uploaded_song_path=uploaded_song_path,
                             match_label="Exact Match (Fingerprint)",
@@ -90,8 +83,7 @@ def index():
         # ------------------------------
         user_spec_path = generate_spectrogram(file_path)
         if not user_spec_path:
-            return render_template(
-                "index.html",
+            return render_template("index.html",
                 uploaded_song=file.filename,
                 uploaded_song_path=uploaded_song_path,
                 match_label="Error generating spectrogram",
@@ -103,8 +95,7 @@ def index():
         try:
             result = compare_with_dataset(user_spec_path, user_audio_path=file_path, threshold=0.70)
         except Exception as e:
-            return render_template(
-                "index.html",
+            return render_template("index.html",
                 uploaded_song=file.filename,
                 uploaded_song_path=uploaded_song_path,
                 match_label=f"Error during comparison: {e}",
@@ -122,11 +113,10 @@ def index():
             song_safe = urllib.parse.quote(result.get("match_song") + ".mp3")
             match_song_path = f"Audio_files/{folder_safe}/{song_safe}".replace("\\", "/")
 
-        return render_template(
-            "index.html",
+        return render_template("index.html",
             uploaded_song=file.filename,
             uploaded_song_path=uploaded_song_path,
-            match_label=result.get("match_label"),       # descriptive label
+            match_label=result.get("match_label"),
             match_song=result.get("match_song"),
             match_song_path=match_song_path,
             final_score=result.get("final_score")
@@ -135,8 +125,7 @@ def index():
     # ------------------------------
     # GET request → render empty form
     # ------------------------------
-    return render_template(
-        "index.html",
+    return render_template("index.html",
         uploaded_song=None,
         uploaded_song_path=None,
         match_label=None,
@@ -144,3 +133,9 @@ def index():
         match_song_path=None,
         final_score=None
     )
+
+# ------------------------------
+# Start server
+# ------------------------------
+if __name__ == "__main__":
+    app.run(debug=True)

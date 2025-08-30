@@ -88,8 +88,6 @@
             margin-top: 10px;
             font-size: 1rem;
         }
-        .score-high { background: #e84118; }
-        .score-low { background: #44bd32; }
     </style>
 </head>
 <body>
@@ -112,8 +110,7 @@
         <p>🎧 Uploaded Song: <b>{{ uploaded_song }}</b></p>
         {% if uploaded_song_path %}
             <audio controls>
-                <source src="/static/{{ uploaded_song_path }}" type="audio/mpeg">
-                Your browser does not support the audio element.
+                <source src="{{ url_for('static', filename=uploaded_song_path) }}" type="audio/mpeg">
             </audio>
         {% endif %}
     {% endif %}
@@ -123,59 +120,48 @@
         <p>Category: <b>{{ match_label }}</b></p>
         {% if match_song_path %}
             <audio controls>
-                <source src="/static/{{ match_song_path }}" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>    
+                <source src="{{ url_for('static', filename=match_song_path) }}" type="audio/mpeg">
+            </audio>
         {% endif %}
+    {% endif %}
 
-        <!-- Score Badge with Dynamic Color -->
-        {% set badge_color = 'red' if final_score > 85 or final_score == 100 else ('green' if final_score <= 75 else 'orange') %}
+    {% if final_score is defined %}
+        {% set badge_color = 'red' if final_score >= 85 else ('green' if final_score <= 75 else 'orange') %}
         <div class="score-badge" style="background-color: {{ badge_color }};">
             Similarity: {{ final_score }}%
         </div>
-    {% else %}
-        <p class="no-match">No match found in the dataset.</p>
+        <canvas id="similarityChart" width="300" height="300"></canvas>
     {% endif %}
-
-    <canvas id="similarityChart" width="300" height="300"></canvas>
-    <script>
-        const score = {{ final_score if final_score else 0 }};
-        let chartColor = '';
-        if (score > 85 || score === 100) {
-            chartColor = 'red';
-        } else if (score <= 75) {
-            chartColor = 'green';
-        } else {
-            chartColor = 'orange';
-        }
-
-        const ctx = document.getElementById('similarityChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'pie',
-            data: {
-                labels: ['Similarity %', 'Unique %'],
-                datasets: [{
-                    data: [score, 100 - score],
-                    backgroundColor: [chartColor, '#353b48']
-                }]
-            },
-            options: {
-                responsive: false,
-                plugins: { legend: { position: 'bottom', labels: { color: '#fff' } } }
-            }
-        });
-    </script>
 </div>
+{% else %}
+<p class="no-match">No match found in the dataset.</p>
 {% endif %}
-
-
-
 
 <script>
     document.getElementById("uploadForm").addEventListener("submit", function() {
         document.getElementById("uploadForm").style.display = "none";
         document.getElementById("loadingSpinner").style.display = "block";
     });
+
+    {% if final_score is defined %}
+    const score = {{ final_score }};
+    let chartColor = score >= 85 ? 'red' : (score <= 75 ? 'green' : 'orange');
+    const ctx = document.getElementById('similarityChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['Similarity %', 'Unique %'],
+            datasets: [{
+                data: [score, 100 - score],
+                backgroundColor: [chartColor, '#353b48']
+            }]
+        },
+        options: {
+            responsive: false,
+            plugins: { legend: { position: 'bottom', labels: { color: '#fff' } } }
+        }
+    });
+    {% endif %}
 </script>
 
 </body>
