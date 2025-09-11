@@ -91,7 +91,7 @@
     </style>
 </head>
 <body>
-   <h1>Music Plagiarism Checker</h1>
+<h1>Music Plagiarism Checker</h1>
 <p>Upload your track to check similarity with our dataset.</p>
 
 <form id="uploadForm" action="/" method="POST" enctype="multipart/form-data">
@@ -99,7 +99,7 @@
     <button type="submit">Check Similarity</button>
 </form>
 
-<div class="loader" id="loadingSpinner">
+<div class="loader" id="loadingSpinner" style="display:none;">
     <div class="spinner"></div>
     <p>Analyzing your song... Please wait</p>
 </div>
@@ -110,7 +110,7 @@
         <p>🎧 Uploaded Song: <b>{{ uploaded_song }}</b></p>
         {% if uploaded_song_path %}
             <audio controls>
-                <source src="{{ url_for('static', filename=uploaded_song_path) }}" type="audio/mpeg">
+                <source src="{{ uploaded_song_path }}" type="audio/mpeg">
             </audio>
         {% endif %}
     {% endif %}
@@ -120,7 +120,7 @@
         <p>Category: <b>{{ match_label }}</b></p>
         {% if match_song_path %}
             <audio controls>
-                <source src="{{ url_for('static', filename=match_song_path) }}" type="audio/mpeg">
+                <source src="{{ match_song_path }}" type="audio/mpeg">
             </audio>
         {% endif %}
     {% endif %}
@@ -133,8 +133,6 @@
         <canvas id="similarityChart" width="300" height="300"></canvas>
     {% endif %}
 </div>
-{% else %}
-<p class="no-match">No match found in the dataset.</p>
 {% endif %}
 
 <script>

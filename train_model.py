@@ -20,10 +20,10 @@ model_path = 'models/multimodal.keras'
 # ------------------------
 input_shape = (128, 128, 3)
 melody_shape = (12,)
-batch_size = 16
-epochs = 28
-train_ratio = 0.85   # using 85% for training now
-test_ratio = 0.15    # 15% for testing
+batch_size = 32
+epochs = 100
+train_ratio = 0.80   # using 85% for training now
+test_ratio = 0.20    # 15% for testing
 random.seed(42)
 
 # ------------------------

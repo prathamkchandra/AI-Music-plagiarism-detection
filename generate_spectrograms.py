@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 # Input audio dataset directory
 dataset_audio_dir = './model/Audio_files'
 dataset_spectrogram_dir = './Spectrograms'
-
 os.makedirs(dataset_spectrogram_dir, exist_ok=True)
 
 def generate_spectrogram(audio_path, output_path):
@@ -28,28 +27,33 @@ def generate_spectrogram(audio_path, output_path):
     plt.close()
     return True
 
-for genre in os.listdir(dataset_audio_dir):
-    genre_path = os.path.join(dataset_audio_dir, genre)
-    if not os.path.isdir(genre_path):
-        continue
-
-    output_genre_dir = os.path.join(dataset_spectrogram_dir, genre)
-    os.makedirs(output_genre_dir, exist_ok=True)
-
-    for file in os.listdir(genre_path):
+# Function to process a folder of audio files
+def process_folder(input_dir, output_dir):
+    os.makedirs(output_dir, exist_ok=True)
+    for file in os.listdir(input_dir):
         ext = file.lower()
-        
-        # Skip MP4 and unsupported formats
         if not ext.endswith(('.wav', '.mp3', '.flac', '.ogg', '.m4a')):
             print(f" Skipping unsupported format: {file}")
             continue
 
-        input_path = os.path.join(genre_path, file)
-        output_path = os.path.join(output_genre_dir, os.path.splitext(file)[0] + '.png')
+        input_path = os.path.join(input_dir, file)
+        output_path = os.path.join(output_dir, os.path.splitext(file)[0] + '.png')
 
         if generate_spectrogram(input_path, output_path):
             print(f" Generated spectrogram for {file}")
         else:
             print(f" Failed to process {file}")
+
+# Main loop
+for item in os.listdir(dataset_audio_dir):
+    item_path = os.path.join(dataset_audio_dir, item)
+    if os.path.isdir(item_path):
+        # Treat it as a genre folder
+        output_genre_dir = os.path.join(dataset_spectrogram_dir, item)
+        process_folder(item_path, output_genre_dir)
+    else:
+        # Directly process files if not in subfolders
+        process_folder(dataset_audio_dir, dataset_spectrogram_dir)
+        break  # Avoid re-processing repeatedly
 
 print(" Spectrogram generation completed.")

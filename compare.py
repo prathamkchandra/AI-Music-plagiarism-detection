@@ -215,12 +215,12 @@ def compare_with_dataset(user_spec_path, user_audio_path, threshold=0.75):
         color = "red"
     elif 85 <= final_score <= 90:
         match_label = "Moderate Match"
-        color = "red"
+        color = "green"
     elif final_score < 75:
-        match_label = "No Match"
+        match_label = "Low Match"
         color = "green"
     else:
-        match_label = "Low Match"
+        match_label = "No Match"
         color = "green"
 
     # Encode filename safely
